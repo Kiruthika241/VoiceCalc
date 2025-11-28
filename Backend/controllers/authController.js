@@ -5,20 +5,20 @@ const User = require("../models/User");
 
 // Generate JWT Token
 const generateToken = (userId) =>
-  jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: "7d" });
+  jwt.sign({ id: userId }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
 
 /* =====================================================
    SIGNUP
 ===================================================== */
 const signup = async (req, res) => {
   try {
-    const { name, phone, email, password, location } = req.body;
+    const { name, phone, email, password, location } = req.body || {};
 
     if (!name || !phone || !email || !password || !location) {
       return res.status(400).json({ message: "All fields are required." });
     }
 
-    const normalizedEmail = email.toLowerCase();
+    const normalizedEmail = String(email).toLowerCase();
 
     // Check duplicates
     const existingEmail = await User.findOne({ email: normalizedEmail });
@@ -57,32 +57,46 @@ const signup = async (req, res) => {
     });
   } catch (err) {
     console.error("Signup error:", err);
+    // handle duplicate key explicitly
+    if (err.code === 11000) {
+      return res.status(400).json({ message: "Duplicate key error", detail: err.keyValue });
+    }
     res.status(500).json({ message: "Server error during signup." });
   }
 };
 
 /* =====================================================
-   LOGIN
+   LOGIN (accepts `identifier` OR `email`)
+   identifier may be email OR phone
 ===================================================== */
 const login = async (req, res) => {
   try {
-    const { identifier, password } = req.body;
+    // accept either `identifier` (legacy) or `email` (frontend) or `username`
+    const rawIdentifier = req.body.identifier || req.body.email || req.body.username;
+    const password = req.body.password;
 
-    if (!identifier || !password) {
-      return res.status(400).json({ message: "Identifier and password are required." });
+    if (!rawIdentifier || !password) {
+      return res.status(400).json({ message: "Identifier (email/phone) and password are required." });
     }
 
+    // normalize if it's an email
     const normalizedIdentifier =
-      identifier.includes("@") ? identifier.toLowerCase() : identifier;
+      typeof rawIdentifier === "string" && rawIdentifier.includes("@")
+        ? rawIdentifier.toLowerCase()
+        : rawIdentifier;
 
     const user = await User.findOne({
       $or: [{ email: normalizedIdentifier }, { phone: normalizedIdentifier }],
     });
 
-    if (!user) return res.status(400).json({ message: "Invalid credentials." });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid credentials." });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message: "Invalid credentials." });
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid credentials." });
+    }
 
     const token = generateToken(user._id);
 
@@ -110,7 +124,11 @@ const login = async (req, res) => {
 ===================================================== */
 const getMe = async (req, res) => {
   try {
-    // req.user is set by protect middleware
+    // req.user is expected to be set by auth middleware
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ message: "Not authenticated." });
+    }
+
     const user = await User.findById(req.user._id).select("-password");
     if (!user) return res.status(404).json({ message: "User not found." });
 
