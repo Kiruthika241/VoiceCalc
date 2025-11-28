@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { CheckCircle2, Rocket, Star, Crown, Infinity } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-const API_BASE = "http://localhost:5000/api"; // same as admin
+const API_BASE = `${process.env.REACT_APP_BACKEND_URL}/api`; // same as admin
 
 export default function Plan() {
   const [selectedPlan, setSelectedPlan] = useState(null);

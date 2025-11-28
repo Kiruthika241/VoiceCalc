@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
-const API_BASE_URL = "http://localhost:5000/api"; // change if backend URL different
+const API_BASE_URL = `${process.env.REACT_APP_BACKEND_URL}/api`; // change if backend URL different
 
 export default function Login() {
   const [activeTab, setActiveTab] = useState("signup"); // default: Sign Up first

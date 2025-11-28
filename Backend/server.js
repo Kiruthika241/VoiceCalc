@@ -28,7 +28,7 @@ connectDB();
 // CORS for Vite frontend
 app.use(
   cors({
-    origin: "http://localhost:5173", // Vite default port; change if needed
+    origin: `${process.env.REACT_APP_BACKEND_URL}`, // Vite default port; change if needed
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

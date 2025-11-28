@@ -482,7 +482,7 @@ export default function VoicePopup() {
 
     // 1) Try Sarvam AI (backend proxy)
     try {
-      const res = await fetch("http://localhost:5000/api/sarvam-tts", {
+      const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/sarvam-tts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -593,7 +593,7 @@ const startListening = () => {
 
       // --- record usage (fire-and-forget) ---
       try {
-        fetch("http://localhost:5000/api/analytics/voice-input", {
+        fetch(`${process.env.REACT_APP_BACKEND_URL}/api/analytics/voice-input`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({

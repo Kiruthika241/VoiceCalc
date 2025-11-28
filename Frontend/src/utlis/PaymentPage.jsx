@@ -8,7 +8,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function PaymentPage() {
   const [selectedMethod, setSelectedMethod] = useState("upi");

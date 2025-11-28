@@ -15,7 +15,7 @@ function highlight(text, query) {
 }
 
 const USERS_PER_PAGE_OPTIONS = [10, 30, 50, 100];
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
