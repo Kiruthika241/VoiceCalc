@@ -478,50 +478,51 @@ export default function VoicePopup() {
 
   /* ----- TTS (Sarvam + fallback) ----- */
   const speak = async (text) => {
-    if (!text) return;
+  if (!text) return;
+  const backend = (import.meta.env.VITE_BACKEND_URL || process.env.REACT_APP_BACKEND_URL || "https://post-api-1elw.onrender.com").replace(/\/$/, "");
+  try {
+    const resp = await fetch(`${backend}/api/sarvam-tts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, target_language_code: lang.ttsCode, speaker: lang.speaker }),
+    });
 
-    // 1) Try Sarvam AI (backend proxy)
-    try {
-      const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/sarvam-tts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text,
-          target_language_code: lang.ttsCode,
-          speaker: lang.speaker,
-        }),
-      });
-
-      if (res.ok) {
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const audio = new Audio(url);
-        setPlaying(true);
-        audio.play().catch(() => {});
-        audio.onended = () => {
-          URL.revokeObjectURL(url);
-          setPlaying(false);
-        };
-        return; // ✅ Sarvam worked, no need fallback
-      }
-    } catch (err) {
-      console.warn("Sarvam TTS failed, falling back to browser TTS:", err);
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => "");
+      console.warn("TTS proxy failed:", resp.status, body);
+      throw new Error("TTS proxy failed");
     }
 
-    // 2) Fallback: browser speechSynthesis
-    try {
-      const synth = window.speechSynthesis;
-      if (!synth) return;
-      const u = new SpeechSynthesisUtterance(String(text));
-      u.lang = lang.ttsCode;
-      synth.cancel();
-      synth.speak(u);
+    const contentType = resp.headers.get("Content-Type") || "";
+    const blob = await resp.blob();
+
+    if (contentType.startsWith("audio/") || blob.size > 0) {
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
       setPlaying(true);
-      u.onend = () => setPlaying(false);
-    } catch (e) {
-      console.error("Browser TTS failed:", e);
+      audio.play().catch((e) => console.warn("play failed", e));
+      audio.onended = () => { URL.revokeObjectURL(url); setPlaying(false); };
+      return;
     }
-  };
+  } catch (err) {
+    console.warn("Sarvam TTS attempt failed:", err);
+  }
+
+  // fallback
+  try {
+    const synth = window.speechSynthesis;
+    if (!synth) return;
+    const u = new SpeechSynthesisUtterance(String(text));
+    u.lang = lang.ttsCode || "en-IN";
+    synth.cancel();
+    synth.speak(u);
+    setPlaying(true);
+    u.onend = () => setPlaying(false);
+  } catch (e) {
+    console.error("Browser TTS failed:", e);
+  }
+};
+
 
   /* ----- Evaluate / Calculate ----- */
   const evaluateExpression = (expr) => {
