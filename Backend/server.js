@@ -7,11 +7,9 @@ const path = require("path");
 
 const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
-const sarvamTTSRoute = require("./routes/sarvam-tts"); // ✅ Sarvam route
-
+const sarvamTTSRoute = require("./routes/sarvam-tts");
 const planRoutes = require("./routes/planRoutes");
 const offerRoutes = require("./routes/offerRoutes");
-
 const analyticsRoutes = require("./routes/analytics");
 
 const app = express();
@@ -22,24 +20,53 @@ const app = express();
 connectDB();
 
 /* =========================
-   2) Core Middlewares
+   2) CORS Configuration
    ========================= */
 
-// CORS for Vite frontend
-app.use(
-  cors({
-    origin: `${process.env.REACT_APP_BACKEND_URL}`, // Vite default port; change if needed
-    credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  })
-);
+const allowedOrigins = [
+  "http://localhost:5173",                  // Local development
+  process.env.FRONTEND_URL                 // Your Render frontend URL
+].filter(Boolean); // Removes undefined values
 
-// Parse JSON bodies
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  // Allow no-origin requests (Postman, Curl, SSR)
+  if (!origin) return next();
+
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization, X-Requested-With"
+    );
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    );
+
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(204);
+    }
+  } else {
+    console.log("❌ CORS blocked origin:", origin);
+    return res.status(403).json({
+      error: "CORS policy: This origin is not allowed!",
+      origin,
+    });
+  }
+
+  next();
+});
+
+/* =========================
+   3) Parse JSON Request Bodies
+   ========================= */
 app.use(express.json());
 
 /* =========================
-   3) Basic Routes
+   4) Basic Routes
    ========================= */
 
 // Test route
@@ -47,40 +74,24 @@ app.get("/", (req, res) => {
   res.send("EzyVoiceCalc API running ✅");
 });
 
-// Health check
+// Health check route
 app.get("/health", (req, res) => {
   res.json({ ok: true, message: "Backend healthy ✅" });
 });
 
-// Auth + users routes (users list also here)
-app.use("/api/auth", authRoutes);
-
-// Sarvam TTS route (🔊 main one)
-app.use("/api/sarvam-tts", sarvamTTSRoute);
-
 /* =========================
-   4) (Optional) Static frontend – if later you build & serve from backend
+   5) API Routes
    ========================= */
 
-// const frontendDist = path.join(__dirname, "../Frontend/EzyVoiceCalculator/dist");
-// app.use(express.static(frontendDist));
-// app.get("*", (req, res) => {
-//   res.sendFile(path.join(frontendDist, "index.html"));
-// });
-
-
-
+app.use("/api/auth", authRoutes);
+app.use("/api/sarvam-tts", sarvamTTSRoute);
 app.use("/api/plans", planRoutes);
 app.use("/api/offers", offerRoutes);
-
 app.use("/api/analytics", analyticsRoutes);
 
-
 /* =========================
-   5) Start server
+   6) Start Server
    ========================= */
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () =>
-  console.log(`🚀 Server running on port ${PORT}`)
-);
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
